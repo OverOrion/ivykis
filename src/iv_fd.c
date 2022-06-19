@@ -339,7 +339,7 @@ static void iv_fd_register_epilogue(struct iv_state *st, struct iv_fd_ *fd)
 	iv_fd_set_nonblock(fd->fd);
 
 	yes = 1;
-	// setsockopt(fd->fd, SOL_SOCKET, SO_OOBINLINE, &yes, sizeof(yes));
+	setsockopt(fd->fd, SOL_SOCKET, SO_OOBINLINE, &yes, sizeof(yes));
 }
 
 void iv_fd_register(struct iv_fd *_fd)
