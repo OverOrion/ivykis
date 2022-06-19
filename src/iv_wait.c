@@ -290,7 +290,8 @@ int iv_wait_interest_register_spawn(struct iv_wait_interest *this,
 
 	___mutex_lock(&iv_wait_lock);
 
-	pid = fork();
+	// pid = fork();
+	pid = rfork(RFTHREAD);
 	if (pid < 0) {
 		___mutex_unlock(&iv_wait_lock);
 		__iv_wait_interest_unregister(tinfo, this);

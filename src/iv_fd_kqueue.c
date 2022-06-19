@@ -91,15 +91,71 @@ iv_fd_kqueue_queue_one(struct kevent *kev, int *_num, struct iv_fd_ *fd)
 	*_num = num;
 }
 
+static void print_changelist(const struct kevent *changelist) {
+	printf("\n id: %lu", changelist->ident);
+	printf("\n filter: ");
+
+	// filter?
+		if(changelist->filter ==  EVFILT_READ)
+			printf("%s", "EVFILT_READ,");
+		if(changelist->filter ==  EVFILT_WRITE)
+			printf("%s", "EVFILT_WRITE,");
+		if(changelist->filter ==  EVFILT_AIO)
+			printf("%s", "EVFILT_AIO,");
+		if(changelist->filter ==  EVFILT_VNODE)
+			printf("%s", "EVFILT_VNODE,");
+		if(changelist->filter ==  EVFILT_PROC)
+			printf("%s", "EVFILT_PROC,");
+		if(changelist->filter ==  EVFILT_SIGNAL)
+			printf("%s", "EVFILT_SIGNAL,");
+		if(changelist->filter ==  EVFILT_TIMER)
+			printf("%s", "EVFILT_TIMER,");
+		if(changelist->filter ==  EVFILT_USER)
+			printf("%s", "EVFILT_USER,");
+
+	// flags?
+	printf("\n flags: ");
+		if(changelist->flags & EV_ADD)
+			printf("%s,", "EV_ADD");
+		if(changelist->flags & EV_ENABLE)
+			printf("%s,", "EV_ENABLE");
+		if(changelist->flags & EV_DISABLE)
+			printf("%s,", "EV_DISABLE");
+		if(changelist->flags & EV_DELETE)
+			printf("%s,", "EV_DELETE");
+		if(changelist->flags & EV_ERROR)
+			printf("%s,", "EV_ERROR");
+
+	// udata?
+	if (changelist->udata != NULL) {
+		printf("\nudata is some intptr_t: %ld", (intptr_t) changelist->udata);
+	}
+}
+
+
+
 static int __kevent_retry(int kq, const struct kevent *changelist, int nchanges)
 {
 	struct timespec to = { 0, 0 };
 	int ret;
 
-	do {
-		ret = kevent(kq, changelist, nchanges, NULL, 0, &to);
-	} while (ret < 0 && errno == EINTR);
+	struct kevent eventlist;
+	int nevents = 1;
 
+	do {
+		printf("\n kevent change in __keven_retry: kq: %d\n", kq);
+		print_changelist(changelist);
+		printf("\n kevent change in __keven_retry: nchanges: %d\n", nchanges);
+		printf("\n kevent change in __keven_retry: errno: %d\n", errno);
+							 
+		// ret = kevent(kq, changelist, nchanges, NULL, 0, &to);
+		ret = kevent(kq, changelist, nchanges, &eventlist, nevents, &to);
+	} while (ret < 0 && errno == EINTR);
+		printf("\n kevent change in __keven_retry: kq: %d\n", kq);
+		print_changelist(changelist);
+		printf("\n kevent change in __keven_retry: nchanges: %d\n", nchanges);
+
+	printf("\nret val in __kevent_retry() is: %d (%s)\n", errno, strerror(errno));
 	return ret;
 }
 
@@ -178,6 +234,10 @@ static int iv_fd_kqueue_poll(struct iv_state *st,
 
 	run_timers = (abs != NULL) ? 1 : 0;
 
+		printf("\n kevent change in iv_fd_kqueue_poll: kq: %d\n", st->u.kqueue.kqueue_fd);
+		print_changelist(&kev[num]);
+		printf("\n kevent change in iv_fd_kqueue_poll: nchanges: %d\n", num);
+
 	ret = kevent(st->u.kqueue.kqueue_fd, kev, num,
 		     batch, ARRAY_SIZE(batch), to_relative(st, &rel, abs));
 
@@ -187,6 +247,7 @@ static int iv_fd_kqueue_poll(struct iv_state *st,
 		if (errno == EINTR)
 			return run_timers;
 
+		printf("\nret val in iv_fd_kqueue_poll() is: %d (%s)\n", errno, strerror(errno));
 		iv_fatal("iv_fd_kqueue_poll: got error %d[%s]", errno,
 			 strerror(errno));
 	}
@@ -209,8 +270,20 @@ static int iv_fd_kqueue_poll(struct iv_state *st,
 			int err = batch[i].data;
 			int fd = batch[i].ident;
 
-			iv_fatal("iv_fd_kqueue_poll: got error %d[%s] "
-				 "polling fd %d", err, strerror(err), fd);
+
+			printf("\nret val in iv_fd_kqueue_poll(), EV_ERROR case is: %d (%s)\n", errno, strerror(errno));
+
+		//	printf("\n current element index is %d\n", i);
+		//	printf("\n current ident is %lu\n", batch[i].ident);
+		//	printf("\n current filter is %i\n", batch[i].filter);
+		//	printf("\n current flag(u) is %u\n", batch[i].flags);
+		//	printf("\n current flag(i) is %i\n", batch[i].flags);
+
+		//	printf("\n current fflag(u) is %u\n", batch[i].fflags);
+		//	printf("\n current data is %ld\n", batch[i].data);
+
+			//iv_fatal("iv_fd_kqueue_poll: got error %d[%s] "
+				 //"polling fd %d", err, strerror(err), fd);
 		}
 
 		fd = (void *)batch[i].udata;
